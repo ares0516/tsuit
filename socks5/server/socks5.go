@@ -55,9 +55,9 @@ const (
 	// 监听端口
 	ListenPort = "1080"
 	// 证书文件
-	CertFile = "../localhost.crt"
+	CertFile = "../resource/test.crt"
 	// 私钥文件
-	KeyFile = "../localhost.key"
+	KeyFile = "../resource/test.key"
 )
 
 var (
@@ -125,7 +125,7 @@ func handleConnection(conn net.Conn) error {
 		return err
 	}
 
-	conn.Write([]byte{Version, 0x00}) // 认证成功
+	conn.Write([]byte{MethodToken, 0x00}) // 认证成功
 
 	// connection
 	connReq, err := Connection(conn)

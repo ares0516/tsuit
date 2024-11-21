@@ -15,7 +15,7 @@ type Reply struct {
 }
 
 func handlerCmdGatewaySate(cli net.Conn) error {
-	cli.Write([]byte{Version, Success, 0x00})
+	cli.Write([]byte{Version, Success, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 
 	errChan := make(chan error, 1)
 	go func() {
@@ -32,6 +32,7 @@ func handlerCmdGatewaySate(cli net.Conn) error {
 				continue
 			}
 
+			log.Printf("网关状态处理: %v, Addr: %v", req, cli.RemoteAddr())
 			switch req.Action {
 			case "heart":
 				_, err = cli.Write([]byte("{\"state\":\"0\"}"))
