@@ -28,7 +28,7 @@ func handlerCmdConnect(cli net.Conn, req *ConnRequest) error {
 
 	cli.Write([]byte{Version, Success, 0x00})
 
-	pipe(cli, dstCli)
+	transferData(cli, dstCli)
 
 	return err
 }
@@ -36,6 +36,16 @@ func handlerCmdConnect(cli net.Conn, req *ConnRequest) error {
 const (
 	BufSize = 20 << 10
 )
+
+func transferData(src, dst net.Conn) {
+	// 双向拷贝数据
+	go func() {
+		io.Copy(dst, src)
+		dst.Close()
+	}()
+	io.Copy(src, dst)
+	src.Close()
+}
 
 func exchangeBuffer2(src, dst net.Conn) (err error) {
 	buf := bufpool.Get(32768)

@@ -112,11 +112,10 @@ func handleConnection(conn net.Conn) error {
 	defer conn.Close()
 
 	// handshake
-	if err := ServerHandshake(conn); err != nil {
-		log.Printf("协商失败: %v", err)
+	if err := socks5Handshake(conn); err != nil {
+		log.Printf("握手失败: %v", err)
 		return err
 	}
-	log.Printf("协商成功")
 
 	// authentication
 	_, err := Authentication(conn)
@@ -161,44 +160,34 @@ func handleConnection(conn net.Conn) error {
 // +----+----------+----------+
 // ServerHandshake 处理客户端连接
 
-func ServerHandshake(conn net.Conn) error {
-	// 读取协商数据
-	buf := make([]byte, 258)
-	if _, err := io.ReadAtLeast(conn, buf, 3); err != nil {
+func socks5Handshake(conn net.Conn) error {
+	buf := make([]byte, 3)
+
+	// 读取版本和方法数
+	if _, err := io.ReadFull(conn, buf); err != nil {
 		return err
 	}
 
-	// 检查协议版本
-	if buf[0] != Version {
+	version := buf[0]
+	nMethods := buf[1]
+	method := buf[2]
+
+	// 检查版本
+	if version != Version {
 		conn.Write([]byte{Version, MethodNoAcceptable})
 		log.Printf("bad version: %d", buf[0])
 		return ErrBadVersion
 	}
 
-	// 检查认证方法数量
-	nMethods := int(buf[1])
-	// if nMethods == 0 || nMethods > 255 {
 	if nMethods != 1 { // 只支持 1 种认证方法
 		conn.Write([]byte{Version, MethodNoAcceptable})
 		return ErrBadMethod
 	}
 
-	// 检查是否为 Token 认证
-	methods := buf[2 : 2+nMethods]
-	supportsToken := false
-	for _, method := range methods {
-		if method == MethodToken {
-			supportsToken = true
-			break
-		}
-	}
-
-	if !supportsToken {
+	if method != MethodToken {
 		conn.Write([]byte{Version, MethodNoAcceptable})
 		return ErrBadMethod
 	}
-
-	log.Printf("version: %x, nMethods: %x, methods: %x", buf[0], nMethods, methods)
 
 	// 选择 Token 认证
 	conn.Write([]byte{Version, MethodToken})
