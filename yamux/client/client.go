@@ -5,6 +5,7 @@ import (
 	"flag"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/yamux"
@@ -18,6 +19,14 @@ func StartBackServer(session *yamux.Session) error {
 		}
 		log.Println("New connection")
 		go handleStream(stream)
+	}
+}
+
+func StartRing(conn net.Conn, msg string, interval int) {
+	for {
+		log.Printf("tik ==> %s", msg)
+		conn.Write([]byte(msg))
+		time.Sleep(time.Duration(interval) * time.Second)
 	}
 }
 
@@ -35,16 +44,36 @@ func Start(server string) error {
 
 	log.Println("Waiting for connections....")
 
-	go StartBackServer(session)
+	var wg sync.WaitGroup
 
-	for {
-		stream, err := session.Open()
-		if err != nil {
-			return err
-		}
-		stream.Write([]byte("Hello, world!"))
-		time.Sleep(3 * time.Second)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		StartBackServer(session)
+	}()
+
+	stream1, err := session.Open()
+	if err != nil {
+		log.Printf("Open stream1 error: %v", err)
 	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		StartRing(stream1, "Hello", 1)
+	}()
+
+	stream2, err := session.Open()
+	if err != nil {
+		log.Printf("Open stream2 error: %v", err)
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		StartRing(stream2, "World", 5)
+	}()
+
+	wg.Wait()
+	return nil
 }
 
 func handleStream(stream net.Conn) {
