@@ -96,8 +96,10 @@ func handleStream(stream net.Conn) {
 	defer stream.Close()
 
 	buf := make([]byte, 1024)
-	stream.Read(buf)
-	log.Printf("接收到消息: %s", string(buf))
+	for {
+		n, _ := stream.Read(buf)
+		log.Printf("接收到消息: %s", string(buf[:n]))
+	}
 }
 
 func main() {
