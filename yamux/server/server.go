@@ -56,12 +56,16 @@ func Start(enableTLS bool) {
 	}
 	defer listener.Close()
 
+	log.Println("等待客户端连接...")
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Printf("接受连接失败: %v", err)
 			continue
 		}
+
+		log.Printf("接受来自 %s 的连接", conn.RemoteAddr())
 
 		go handleConnection(conn)
 	}
@@ -73,8 +77,13 @@ func handleConnection(conn net.Conn) error {
 		log.Printf("创建 yamux 会话失败: %v", err)
 		return err
 	}
+	defer session.Close()
 	for {
 		stream, err := session.Accept()
+		if err == yamux.ErrSessionShutdown {
+			log.Println("会话已关闭")
+			return nil
+		}
 		if err != nil {
 			log.Printf("打开 yamux 流失败: %v", err)
 			continue
@@ -86,7 +95,7 @@ func handleConnection(conn net.Conn) error {
 func handleStream(stream net.Conn) {
 	defer stream.Close()
 
-	buf := make([]byte, 4)
+	buf := make([]byte, 1024)
 	stream.Read(buf)
 	log.Printf("接收到消息: %s", string(buf))
 }
