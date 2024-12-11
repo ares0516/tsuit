@@ -37,10 +37,14 @@ func Start(server string) error {
 		return err
 	}
 
+	log.Printf("remote conn peer address: %s", conn.RemoteAddr().String())
+
 	session, err := yamux.Client(conn, nil)
 	if err != nil {
 		return err
 	}
+
+	log.Printf("remote session peer address: %s", session.RemoteAddr().String())
 
 	log.Println("Waiting for connections....")
 
