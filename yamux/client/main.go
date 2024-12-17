@@ -59,22 +59,24 @@ func Start(server string) error {
 	stream1, err := session.Open()
 	if err != nil {
 		log.Printf("Open stream1 error: %v", err)
+	} else {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			StartRing(stream1, "Hello", 1)
+		}()
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		StartRing(stream1, "Hello", 1)
-	}()
 
 	stream2, err := session.Open()
 	if err != nil {
 		log.Printf("Open stream2 error: %v", err)
+	} else {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			StartRing(stream2, "World", 5)
+		}()
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		StartRing(stream2, "World", 5)
-	}()
 
 	wg.Wait()
 	return nil
