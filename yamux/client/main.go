@@ -3,12 +3,10 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"fmt"
 	"log"
 	"net"
 	"sync"
 	"time"
-	"yamux/common"
 
 	"github.com/hashicorp/yamux"
 )
@@ -94,14 +92,9 @@ func handleStream(stream net.Conn) {
 	}
 }
 
-func main1() {
+func main() {
 	server := flag.String("server", "192.168.31.142:1080", "The relay server (the connect-back address)")
 	flag.Parse()
 
 	Start(*server)
-}
-
-func main() {
-	fmt.Println("This is the client.")
-	common.CommonFunction()
 }

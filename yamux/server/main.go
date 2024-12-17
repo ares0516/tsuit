@@ -3,10 +3,8 @@ package main
 import (
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"log"
 	"net"
-	"yamux/common"
 
 	"github.com/hashicorp/yamux"
 )
@@ -115,11 +113,6 @@ func handleStream(stream net.Conn) {
 	}
 }
 
-func main1() {
-	Start(ENABLE_TLS)
-}
-
 func main() {
-	fmt.Println("This is the server.")
-	common.CommonFunction()
+	Start(ENABLE_TLS)
 }
