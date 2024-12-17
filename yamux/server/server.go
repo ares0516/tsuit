@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"log"
 	"net"
 
@@ -80,19 +81,11 @@ func handleConnection(conn net.Conn) error {
 	defer session.Close()
 	for {
 		stream, err := session.Accept()
-		if err == yamux.ErrSessionShutdown {
-			log.Println("会话已关闭")
-			return nil
-		}
-		if err == yamux.ErrConnectionReset {
-			log.Println("连接已重置")
-			return nil
-		}
-		if err == yamux.ErrStreamClosed {
-			log.Printf("打开 yamux 流失败: %v", err)
-			continue
-		}
 		if err != nil {
+			if errors.Is(err, yamux.ErrConnectionReset) {
+				log.Println("连接已重置")
+				return nil
+			}
 			log.Printf("接受 yamux 流失败: %v", err)
 			continue
 		}
