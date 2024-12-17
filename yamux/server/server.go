@@ -84,8 +84,16 @@ func handleConnection(conn net.Conn) error {
 			log.Println("会话已关闭")
 			return nil
 		}
-		if err != yamux.ErrStreamClosed {
+		if err == yamux.ErrConnectionReset {
+			log.Println("连接已重置")
+			return nil
+		}
+		if err == yamux.ErrStreamClosed {
 			log.Printf("打开 yamux 流失败: %v", err)
+			continue
+		}
+		if err != nil {
+			log.Printf("接受 yamux 流失败: %v", err)
 			continue
 		}
 		go handleStream(stream)
