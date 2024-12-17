@@ -15,9 +15,9 @@ const (
 	// 监听端口
 	ListenPort = "1080"
 	// 证书文件
-	CertFile = "../../cert/test.crt"
+	CertFile = "../cert/test.crt"
 	// 私钥文件
-	KeyFile = "../../cert/test.key"
+	KeyFile = "../cert/test.key"
 )
 
 const (
