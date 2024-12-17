@@ -84,7 +84,7 @@ func handleConnection(conn net.Conn) error {
 			log.Println("会话已关闭")
 			return nil
 		}
-		if err != nil {
+		if err != yamux.ErrStreamClosed {
 			log.Printf("打开 yamux 流失败: %v", err)
 			continue
 		}
@@ -97,8 +97,12 @@ func handleStream(stream net.Conn) {
 
 	buf := make([]byte, 1024)
 	for {
-		n, _ := stream.Read(buf)
-		log.Printf("接收到消息: %s", string(buf[:n]))
+		n, err := stream.Read(buf)
+		if err != nil {
+			log.Printf("读取数据失败: %v", err)
+			return
+		}
+		log.Println("接收到数据:", string(buf[:n]))
 	}
 }
 
