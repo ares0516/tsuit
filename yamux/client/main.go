@@ -25,7 +25,11 @@ func StartBackServer(session *yamux.Session) error {
 func StartRing(conn net.Conn, msg string, interval int) {
 	for {
 		log.Printf("tik ==> %s", msg)
-		conn.Write([]byte(msg))
+		_, err := conn.Write([]byte(msg))
+		if err != nil {
+			log.Printf("Write error: %v", err)
+			return
+		}
 		time.Sleep(time.Duration(interval) * time.Second)
 	}
 }
