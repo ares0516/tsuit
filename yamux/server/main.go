@@ -95,6 +95,7 @@ func handleConnection(conn net.Conn) error {
 			log.Printf("接受 yamux 流失败: %v", err)
 			continue
 		}
+		log.Printf("接受来自 %s 的流", stream.RemoteAddr())
 		go handleStream(stream)
 	}
 }
