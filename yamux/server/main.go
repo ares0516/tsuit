@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
 	"net"
+	"yamux/common"
 
 	"github.com/hashicorp/yamux"
 )
@@ -79,8 +81,14 @@ func handleConnection(conn net.Conn) error {
 		return err
 	}
 	defer session.Close()
+
 	for {
+		if session.IsClosed() {
+			log.Println("会话已关闭")
+			return nil
+		}
 		stream, err := session.Accept()
+
 		if err != nil {
 			if errors.Is(err, yamux.ErrConnectionReset) {
 				log.Println("连接已重置")
@@ -107,6 +115,11 @@ func handleStream(stream net.Conn) {
 	}
 }
 
-func main() {
+func main1() {
 	Start(ENABLE_TLS)
+}
+
+func main() {
+	fmt.Println("This is the server.")
+	common.CommonFunction()
 }
