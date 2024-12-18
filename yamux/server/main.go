@@ -25,6 +25,8 @@ const (
 	DISABLE_TLS = false
 )
 
+var _manager *Manager
+
 func Start(enableTLS bool) {
 	var listener net.Listener
 	var err error
@@ -80,6 +82,10 @@ func handleConnection(conn net.Conn) error {
 	}
 	defer session.Close()
 
+	vip := allocAddr()
+	_manager.Add(vip, session)
+	_manager.Dump()
+
 	for {
 		if session.IsClosed() {
 			log.Println("会话已关闭")
@@ -115,5 +121,6 @@ func handleStream(stream net.Conn) {
 }
 
 func main() {
+	_manager = NewManager()
 	Start(ENABLE_TLS)
 }
