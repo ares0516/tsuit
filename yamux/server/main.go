@@ -89,6 +89,7 @@ func handleConnection(conn net.Conn) error {
 	for {
 		if session.IsClosed() {
 			log.Println("会话已关闭")
+			_manager.Remove(vip)
 			return nil
 		}
 		stream, err := session.Accept()
