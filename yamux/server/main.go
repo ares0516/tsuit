@@ -68,7 +68,7 @@ func Start(enableTLS bool) {
 			continue
 		}
 
-		log.Printf("conn remote: %s", conn.RemoteAddr())
+		log.Printf("conn remote: %s, conn local %s", conn.RemoteAddr(), conn.LocalAddr())
 
 		go handleConnection(conn)
 	}
@@ -82,7 +82,7 @@ func handleConnection(conn net.Conn) error {
 	}
 	defer session.Close()
 
-	log.Printf("session remote: %s", session.RemoteAddr())
+	log.Printf("session remote: %s, session local: %s", session.RemoteAddr(), session.LocalAddr())
 
 	vip := allocAddr()
 	_manager.Add(vip, session)
@@ -104,7 +104,7 @@ func handleConnection(conn net.Conn) error {
 			log.Printf("接受 yamux 流失败: %v", err)
 			continue
 		}
-		log.Printf("stream remote: %s", stream.RemoteAddr())
+		log.Printf("stream remote: %s, stream local %s", stream.RemoteAddr(), stream.LocalAddr())
 		go handleStream(stream)
 	}
 }
