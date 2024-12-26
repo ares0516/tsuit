@@ -68,7 +68,7 @@ func Start(enableTLS bool) {
 			continue
 		}
 
-		log.Printf("接受来自 %s 的连接", conn.RemoteAddr())
+		log.Printf("conn remote: %s", conn.RemoteAddr())
 
 		go handleConnection(conn)
 	}
@@ -81,6 +81,8 @@ func handleConnection(conn net.Conn) error {
 		return err
 	}
 	defer session.Close()
+
+	log.Printf("session remote: %s", session.RemoteAddr())
 
 	vip := allocAddr()
 	_manager.Add(vip, session)
@@ -102,7 +104,7 @@ func handleConnection(conn net.Conn) error {
 			log.Printf("接受 yamux 流失败: %v", err)
 			continue
 		}
-		log.Printf("接受来自 %s 的流", stream.RemoteAddr())
+		log.Printf("stream remote: %s", stream.RemoteAddr())
 		go handleStream(stream)
 	}
 }
