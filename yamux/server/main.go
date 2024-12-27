@@ -103,6 +103,12 @@ func (s *Server) handleLocalConnection(conn net.Conn) {
 
 	// session := _manager.Get(destAddr)
 	_manager.Dump()
+	if _manager.IsExist("10.0.0.1") {
+		logrus.Infof(" session found for IP address %s\n", destAddr)
+	} else {
+		logrus.Infof("No session found for IP address %s\n", destAddr)
+	}
+
 	session := _manager.Get("10.0.0.1") // use fake
 
 	if session != nil {
