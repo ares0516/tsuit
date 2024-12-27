@@ -27,7 +27,11 @@ func (m *Manager) Add(addr string, session *yamux.Session) {
 func (m *Manager) Get(addr string) *yamux.Session {
 	m.Lock()
 	defer m.Unlock()
-	return m.addr2session[addr]
+	session, ok := m.addr2session[addr]
+	if !ok {
+		return nil
+	}
+	return session
 }
 
 func (m *Manager) Remove(addr string) {
