@@ -4,44 +4,13 @@ import (
 	"crypto/tls"
 	"flag"
 	"log"
-	"net"
-	"sync"
-	"time"
 	"yamux/common"
 
 	"github.com/hashicorp/yamux"
 )
 
-func StartBackServer(session *yamux.Session) error {
-	socks5Server, err := common.NewSimpleSocksProxyServer()
-	if err != nil {
-		log.Printf("NewSimpleSocksProxyServer error: %v", err)
-	}
-
-	for {
-		stream, err := session.Accept()
-		if err != nil {
-			return err
-		}
-		log.Println("New back connection")
-		go socks5Server.ServeConn(stream)
-		// go handleStream(stream)
-	}
-}
-
-func StartRing(conn net.Conn, msg string, interval int) {
-	for {
-		log.Printf("tik ==> %s", msg)
-		_, err := conn.Write([]byte(msg))
-		if err != nil {
-			log.Printf("Write error: %v", err)
-			return
-		}
-		time.Sleep(time.Duration(interval) * time.Second)
-	}
-}
-
 func Start(server string) error {
+
 	config := &tls.Config{InsecureSkipVerify: true}
 	conn, err := tls.Dial("tcp", server, config)
 	if err != nil {
@@ -59,55 +28,23 @@ func Start(server string) error {
 
 	log.Println("Waiting for connections....")
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		StartBackServer(session)
-	}()
-
-	stream1, err := session.Open()
+	socks5Server, err := common.NewSimpleSocksProxyServer()
 	if err != nil {
-		log.Printf("Open stream1 error: %v", err)
-	} else {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			StartRing(stream1, "Hello", 1)
-		}()
+		log.Printf("NewSimpleSocksProxyServer error: %v", err)
 	}
 
-	stream2, err := session.Open()
-	if err != nil {
-		log.Printf("Open stream2 error: %v", err)
-	} else {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			StartRing(stream2, "World", 5)
-		}()
-	}
-
-	wg.Wait()
-	return nil
-}
-
-func handleStream(stream net.Conn) {
-	defer stream.Close()
-	buf := make([]byte, 1024)
 	for {
-		n, err := stream.Read(buf)
+		stream, err := session.Accept()
 		if err != nil {
-			return
+			return err
 		}
-		log.Println("Received:", string(buf[:n]))
+		log.Println("New back connection")
+		go socks5Server.ServeConn(stream)
 	}
 }
 
 func main() {
-	server := flag.String("server", "192.168.31.142:1080", "The relay server (the connect-back address)")
+	server := flag.String("server", "192.168.31.142:1080", "The proxy server address)")
 	flag.Parse()
-
 	Start(*server)
 }

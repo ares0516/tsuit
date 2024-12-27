@@ -2,17 +2,21 @@ package main
 
 import (
 	"crypto/tls"
-	"errors"
-	"log"
+	"flag"
+	"fmt"
+	"io"
 	"net"
+	"sync"
 
+	"github.com/ares0516/tsuit/common"
 	"github.com/hashicorp/yamux"
+	"github.com/sirupsen/logrus"
 )
 
 const (
 	// 监听地址
 	ListenAddr = "0.0.0.0"
-	// 监听端口
+	// 监听�?�?
 	ListenPort = "1080"
 	// 证书文件
 	CertFile = "../cert/test.crt"
@@ -25,105 +29,139 @@ const (
 	DISABLE_TLS = false
 )
 
-var _manager *Manager
+type Server struct {
+	sync.Mutex
+	LocalAddress string // 本地地址
+	EntryAddress string // 入口地址
+	AddressMap   map[string]*yamux.Session
+}
 
-func Start(enableTLS bool) {
-	var listener net.Listener
-	var err error
+var _manager = common.NewManager()
 
-	if enableTLS {
-		// 加载证书和私钥
-		cert, err := tls.LoadX509KeyPair(CertFile, KeyFile)
-		if err != nil {
-			log.Fatalf("无法加载证书和私钥: %v", err)
-		}
+func NewServer(localAddress, entryAddress string) *Server {
+	return &Server{
+		LocalAddress: localAddress,
+		EntryAddress: entryAddress,
+	}
+}
 
-		// 创建 TLS 配置
-		tlsConfig := &tls.Config{
-			Certificates: []tls.Certificate{cert},
-		}
+func (s *Server) startEntryServer() {
+	cert, err := tls.LoadX509KeyPair(CertFile, KeyFile)
+	if err != nil {
+		logrus.Errorf("加载证书失败: %v", err)
+		return
+	}
 
-		// 创建 TLS 监听器
-		listener, err = tls.Listen("tcp", ListenAddr+":"+ListenPort, tlsConfig)
-		if err != nil {
-			log.Fatalf("无法监听端口: %v", err)
-		}
-		log.Println("YAMUX TLS 服务器正在监听 " + ListenAddr + ":" + ListenPort)
-	} else {
-		// 创建普通 TCP 监听器
-		listener, err = net.Listen("tcp", ListenAddr+":"+ListenPort)
-		if err != nil {
-			log.Fatalf("无法监听端口: %v", err)
-		}
-		log.Println("YAMUX 服务器正在监听 " + ListenAddr + ":" + ListenPort)
+	config := &tls.Config{Certificates: []tls.Certificate{cert}}
+
+	listener, err := tls.Listen("tcp", s.EntryAddress, config)
+	if err != nil {
+		logrus.Errorf("监听入口地址失败: %v", err)
+		return
 	}
 	defer listener.Close()
-
-	log.Println("等待客户端连接...")
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("接受连接失败: %v", err)
+			logrus.Errorf("接受连接失败: %v", err)
 			continue
 		}
-
-		log.Printf("conn remote: %s, conn local %s", conn.RemoteAddr(), conn.LocalAddr())
-
-		go handleConnection(conn)
+		go s.handleEntryConnection(conn)
 	}
 }
 
-func handleConnection(conn net.Conn) error {
+func (s *Server) startLocalServer() {
+	conn, err := net.Listen("tcp", s.LocalAddress)
+	if err != nil {
+		logrus.Errorf("监听本地地址失败: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	for {
+		client, err := conn.Accept()
+		if err != nil {
+			logrus.Errorf("接受本地连接失败: %v", err)
+			continue
+		}
+		go s.handleLocalConnection(client)
+	}
+
+}
+
+func (s *Server) handleLocalConnection(conn net.Conn) {
+	defer conn.Close()
+	logrus.WithFields(logrus.Fields{"local address": conn.LocalAddr()}).Info("New local connection.\n")
+	destAddr, port, err := common.GetOriginalDst(conn)
+	if err != nil {
+		logrus.Errorf("Failed to get original destination: %v", err)
+		return
+	}
+	logrus.WithFields(logrus.Fields{"dest address": destAddr}).Info("New local connection.\n")
+	s.Lock()
+	session, found := s.AddressMap[destAddr]
+	s.Unlock()
+	if !found {
+		logrus.Warningf("No session found for IP address %s, closing connection from %s", destAddr, conn.RemoteAddr())
+		conn.Close()
+		return
+	}
+
+	stream, err := session.Open()
+	if err != nil {
+		logrus.Errorf("Could not open session : %s\n", err)
+		return
+	}
+
+	//在stream上做socks5认证
+	common.Auth(stream)
+
+	//建立socks连接
+	common.Requisition(stream, "127.0.0.1", port, common.Connect)
+
+	go func() {
+		io.Copy(conn, stream)
+		conn.Close()
+	}()
+	io.Copy(stream, conn)
+}
+
+// 处理客户端传入链接
+func (s *Server) handleEntryConnection(conn net.Conn) (*yamux.Session, error) {
+	logrus.WithFields(logrus.Fields{"remoteaddr": conn.RemoteAddr().String()}).Info("New relay connection.\n")
 	session, err := yamux.Server(conn, nil)
 	if err != nil {
-		log.Printf("创建 yamux 会话失败: %v", err)
-		return err
+		return nil, err
 	}
-	defer session.Close()
-
-	log.Printf("session remote: %s, session local: %s", session.RemoteAddr(), session.LocalAddr())
+	ping, err := session.Ping()
+	if err != nil {
+		return nil, err
+	}
+	logrus.Printf("Session ping : %v\n", ping)
 
 	vip := allocAddr()
 	_manager.Add(vip, session)
 	_manager.Dump()
 
-	for {
-		if session.IsClosed() {
-			log.Println("会话已关闭")
-			_manager.Remove(vip)
-			return nil
-		}
-		stream, err := session.Accept()
-
-		if err != nil {
-			if errors.Is(err, yamux.ErrConnectionReset) {
-				log.Println("连接已重置")
-				return nil
-			}
-			log.Printf("接受 yamux 流失败: %v", err)
-			continue
-		}
-		log.Printf("stream remote: %s, stream local %s", stream.RemoteAddr(), stream.LocalAddr())
-		go handleStream(stream)
-	}
+	return session, nil
 }
 
-func handleStream(stream net.Conn) {
-	defer stream.Close()
-
-	buf := make([]byte, 1024)
-	for {
-		n, err := stream.Read(buf)
-		if err != nil {
-			log.Printf("读取数据失败: %v", err)
-			return
+func allocAddr() string {
+	for i := 1; i < 255; i++ {
+		addr := fmt.Sprintf("10.0.0.%d", i)
+		if !_manager.IsExist(addr) {
+			return addr
 		}
-		log.Println("接收到数据:", string(buf[:n]))
 	}
+	return ""
 }
 
 func main() {
-	_manager = NewManager()
-	Start(ENABLE_TLS)
+	localAddress := flag.String("local", "0.0.0.0:5555", "The local address")
+	entryAddress := flag.String("entry", "0.0.0.0:1080", "The entry address")
+	flag.Parse()
+	server := NewServer(*localAddress, *entryAddress)
+	go server.startEntryServer()
+	server.startLocalServer()
 }
