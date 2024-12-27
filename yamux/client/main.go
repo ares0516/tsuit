@@ -4,7 +4,8 @@ import (
 	"crypto/tls"
 	"flag"
 	"log"
-	"yamux/common"
+
+	"github.com/ares0516/tsuit/common"
 
 	"github.com/hashicorp/yamux"
 )

@@ -5,12 +5,16 @@ BINARY_CLIENT = yclient
 BINARY_SERVER = yserver
 
 # 模块名称（与 go.mod 中的一致）
-MODULE_NAME = yamux
+MODULE_NAME = github.com/ares0516/tsuit
 
 # 默认目标
 .PHONY: all build build-client build-server clean
 
 all: build
+
+client: build-client
+
+server: build-server
 
 # 构建所有目标
 build: build-client build-server

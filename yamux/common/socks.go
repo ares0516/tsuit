@@ -9,7 +9,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"syscall"
 	"unicode"
 )
 
@@ -225,28 +224,4 @@ func portToBytes(port uint16) []byte {
 	buf := make([]byte, 2)
 	binary.BigEndian.PutUint16(buf, port)
 	return buf
-}
-
-func GetOriginalDst(conn net.Conn) (string, uint16, error) {
-	tcpConn, ok := conn.(*net.TCPConn)
-	if !ok {
-		return "", 0, fmt.Errorf("not a TCP connection")
-	}
-
-	file, err := tcpConn.File()
-	if err != nil {
-		return "", 0, err
-	}
-	defer file.Close()
-
-	fd := int(file.Fd())
-	addr, err := syscall.GetsockoptIPv6Mreq(fd, syscall.IPPROTO_IP, 80)
-	if err != nil {
-		return "", 0, err
-	}
-
-	ip := net.IPv4(addr.Multiaddr[4], addr.Multiaddr[5], addr.Multiaddr[6], addr.Multiaddr[7])
-	port := uint16(addr.Multiaddr[2])<<8 + uint16(addr.Multiaddr[3])
-
-	return ip.String(), port, nil
 }
