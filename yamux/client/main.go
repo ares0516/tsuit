@@ -7,18 +7,25 @@ import (
 	"net"
 	"sync"
 	"time"
+	"yamux/common"
 
 	"github.com/hashicorp/yamux"
 )
 
 func StartBackServer(session *yamux.Session) error {
+	socks5Server, err := common.NewSimpleSocksProxyServer()
+	if err != nil {
+		log.Printf("NewSimpleSocksProxyServer error: %v", err)
+	}
+
 	for {
 		stream, err := session.Accept()
 		if err != nil {
 			return err
 		}
-		log.Println("New connection")
-		go handleStream(stream)
+		log.Println("New back connection")
+		go socks5Server.ServeConn(stream)
+		// go handleStream(stream)
 	}
 }
 
