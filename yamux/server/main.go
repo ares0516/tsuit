@@ -94,16 +94,16 @@ func (s *Server) startLocalServer() {
 func (s *Server) handleLocalConnection(conn net.Conn) {
 	defer conn.Close()
 	logrus.WithFields(logrus.Fields{"local address": conn.LocalAddr()}).Info("New local connection.\n")
-	destAddr, port, err := common.GetOriginalDst(conn)
+	destAddr, port, err := GetOriginalDst(conn)
 	if err != nil {
 		logrus.Errorf("Failed to get original destination: %v", err)
 		return
 	}
 	logrus.WithFields(logrus.Fields{"dest address": destAddr}).Info("New local connection.\n")
-	s.Lock()
-	session, found := s.AddressMap[destAddr]
-	s.Unlock()
-	if !found {
+
+	session := _manager.Get(destAddr)
+
+	if session != nil {
 		logrus.Warningf("No session found for IP address %s, closing connection from %s", destAddr, conn.RemoteAddr())
 		conn.Close()
 		return
