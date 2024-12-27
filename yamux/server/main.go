@@ -101,7 +101,8 @@ func (s *Server) handleLocalConnection(conn net.Conn) {
 	}
 	logrus.WithFields(logrus.Fields{"dest address": destAddr}).Info("New local connection.\n")
 
-	session := _manager.Get(destAddr)
+	// session := _manager.Get(destAddr)
+	session := _manager.Get("10.0.0.1") // use fake
 
 	if session != nil {
 		logrus.Warningf("No session found for IP address %s, closing connection from %s", destAddr, conn.RemoteAddr())
