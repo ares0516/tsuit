@@ -1,10 +1,10 @@
 package common
 
 import (
-	"log"
 	"sync"
 
 	"github.com/hashicorp/yamux"
+	"github.com/sirupsen/logrus"
 )
 
 type Manager struct {
@@ -47,6 +47,6 @@ func (m *Manager) Dump() {
 	m.Lock()
 	defer m.Unlock()
 	for addr, session := range m.addr2session {
-		log.Printf("Addr: %s, Session: %v", addr, session.RemoteAddr().String())
+		logrus.Infof("Dump Addr: %s, Session: %v", addr, session.RemoteAddr().String())
 	}
 }
