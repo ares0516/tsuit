@@ -131,6 +131,15 @@ func (s *Server) handleLocalConnection(conn net.Conn) {
 // 处理客户端传入链接
 func (s *Server) handleEntryConnection(conn net.Conn) (*yamux.Session, error) {
 	logrus.WithFields(logrus.Fields{"remoteaddr": conn.RemoteAddr().String()}).Info("New relay connection.\n")
+
+	err := common.PipeCheck(conn)
+	if err != nil {
+		logrus.Errorf("PipeCheck failed: %v", err)
+		return nil, err
+	} else {
+		logrus.Info("PipeCheck success.\n")
+	}
+
 	session, err := yamux.Server(conn, nil)
 	if err != nil {
 		return nil, err

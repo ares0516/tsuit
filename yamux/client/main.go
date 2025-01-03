@@ -3,9 +3,9 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"log"
 
 	"github.com/ares0516/tsuit/common"
+	"github.com/sirupsen/logrus"
 
 	"github.com/hashicorp/yamux"
 )
@@ -18,20 +18,27 @@ func Start(server string) error {
 		return err
 	}
 
-	log.Printf("remote conn peer address: %s", conn.RemoteAddr().String())
+	logrus.Info("remote conn peer address: %s", conn.RemoteAddr().String())
+
+	err = common.PipeAuth(conn)
+	if err != nil {
+		logrus.Errorf("PipeAuth error: %v", err)
+	} else {
+		logrus.Info("PipeAuth success")
+	}
 
 	session, err := yamux.Client(conn, nil)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("remote session peer address: %s", session.RemoteAddr().String())
+	logrus.Info("remote session peer address: %s", session.RemoteAddr().String())
 
-	log.Println("Waiting for connections....")
+	logrus.Info("Waiting for connections....")
 
 	socks5Server, err := common.NewSimpleSocksProxyServer()
 	if err != nil {
-		log.Printf("NewSimpleSocksProxyServer error: %v", err)
+		logrus.Errorf("NewSimpleSocksProxyServer error: %v", err)
 	}
 
 	for {
@@ -39,7 +46,7 @@ func Start(server string) error {
 		if err != nil {
 			return err
 		}
-		log.Println("New back connection")
+		logrus.Info("New back connection")
 		go socks5Server.ServeConn(stream)
 	}
 }
