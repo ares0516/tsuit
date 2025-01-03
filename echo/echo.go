@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 )
@@ -27,13 +28,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(htmlContent))
 }
 
+var port string
+
 func main() {
+
+	flag.StringVar(&port, "port", "8000", "The port to listen on")
+
 	// Register the handler function for the root path "/"
 	http.HandleFunc("/", handler)
 
-	// Start the server on port 8080
-	fmt.Println("Server starting on port 8080...")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	// Start the server on port 8000
+	fmt.Println("Server starting on port 8000...")
+	addr := fmt.Sprintf(":%s", port)
+	if err := http.ListenAndServe(addr, nil); err != nil {
 		fmt.Printf("Error starting server: %s\n", err)
 	}
 }
