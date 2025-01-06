@@ -2,10 +2,10 @@ package common
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"net"
-
-	"gvisor.dev/gvisor/pkg/errors"
 )
 
 var token = []byte("in the pipe, five by five")
@@ -32,7 +32,7 @@ func PipeAuth(conn net.Conn) error {
 	if string(response) == "succ" {
 		return nil
 	}
-	return errors.New("authentication failed")
+	return fmt.Errorf("auth failed: %s", response)
 }
 
 func PipeCheck(conn net.Conn) error {
